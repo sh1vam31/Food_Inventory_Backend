@@ -141,42 +141,79 @@ def get_users(
     return UserService.get_users(db, skip=skip, limit=limit)
 
 
-@router.post("/init-admin")
-def initialize_admin(db: Session = Depends(get_db)):
-    """Initialize default admin user (public endpoint for setup)"""
+@router.post("/create-first-admin")
+def create_first_admin(db: Session = Depends(get_db)):
+    """Create first admin user - public endpoint for initial setup"""
     try:
-        # Check if any admin exists
+        # Check if ANY user exists
         from app.models.user import User, UserRole
-        existing_admin = db.query(User).filter(User.role == UserRole.ADMIN).first()
-        if existing_admin:
-            return {"message": "Admin user already exists", "username": existing_admin.username}
+        existing_users = db.query(User).count()
+        if existing_users > 0:
+            return {"message": "Users already exist. Use /init-admin instead."}
         
-        # Create admin user directly without using UserService to avoid validation issues
-        from app.core.auth import get_password_hash
+        # Create admin user with minimal validation
+        import hashlib
         
-        hashed_password = get_password_hash("admin")
+        # Use simple hash instead of bcrypt for initial setup
+        simple_password = "admin"
+        password_hash = hashlib.sha256(simple_password.encode()).hexdigest()
+        
         admin_user = User(
             username="admin",
-            email="admin@foodinventory.com",
-            hashed_password=hashed_password,
-            full_name="System Administrator",
+            email="admin@example.com",
+            hashed_password=password_hash,  # Simple hash for now
+            full_name="Admin",
             role=UserRole.ADMIN,
             is_active=True
         )
         
         db.add(admin_user)
         db.commit()
-        db.refresh(admin_user)
         
         return {
-            "message": "Admin user created successfully",
+            "message": "First admin created successfully",
             "username": "admin",
             "password": "admin",
-            "note": "Please change the password after first login"
+            "note": "Login and create proper users through the interface"
         }
     except Exception as e:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create admin user: {str(e)}"
+        return {"error": str(e)}
+
+
+@router.post("/quick-login")
+def quick_login(username: str, password: str, db: Session = Depends(get_db)):
+    """Quick login for simple hash users"""
+    try:
+        from app.models.user import User
+        import hashlib
+        
+        user = db.query(User).filter(User.username == username).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        
+        # Check simple hash
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        if user.hashed_password != password_hash:
+            raise HTTPException(status_code=401, detail="Invalid password")
+        
+        # Create tokens
+        from app.core.auth import create_access_token, create_refresh_token
+        from datetime import timedelta
+        
+        access_token = create_access_token(
+            data={"sub": user.username, "user_id": user.id, "role": user.role},
+            expires_delta=timedelta(minutes=30)
         )
+        
+        refresh_token = create_refresh_token(
+            data={"sub": user.username, "user_id": user.id, "role": user.role}
+        )
+        
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
