@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 from app.models.user import UserRole
@@ -6,7 +6,7 @@ from app.models.user import UserRole
 
 class UserBase(BaseModel):
     username: str
-    email: EmailStr
+    email: str  # Changed from EmailStr to str temporarily
     full_name: Optional[str] = None
     role: UserRole = UserRole.ORDER_MAINTAINER
 
@@ -17,7 +17,7 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     username: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None  # Changed from EmailStr to str temporarily
     full_name: Optional[str] = None
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
