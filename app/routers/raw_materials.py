@@ -4,6 +4,8 @@ from typing import List
 from app.database import get_db
 from app.services.raw_material_service import RawMaterialService
 from app.schemas.raw_material import RawMaterialCreate, RawMaterialUpdate, RawMaterialResponse, RawMaterialWithUsageResponse
+from app.core.dependencies import get_current_active_user, require_admin
+from app.models.user import User
 
 router = APIRouter(prefix="/api/raw-materials", tags=["raw-materials"])
 
@@ -11,9 +13,10 @@ router = APIRouter(prefix="/api/raw-materials", tags=["raw-materials"])
 @router.post("/", response_model=RawMaterialResponse, status_code=status.HTTP_201_CREATED)
 def create_raw_material(
     raw_material: RawMaterialCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)  # Admin only
 ):
-    """Create a new raw material"""
+    """Create a new raw material (Admin only)"""
     # Check if raw material with same name already exists
     existing = RawMaterialService.get_raw_material_by_name(db, raw_material.name)
     if existing:
@@ -29,7 +32,8 @@ def create_raw_material(
 def get_raw_materials(
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)  # Any authenticated user
 ):
     """Get all raw materials"""
     return RawMaterialService.get_raw_materials(db, skip=skip, limit=limit)

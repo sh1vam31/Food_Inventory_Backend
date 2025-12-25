@@ -1,15 +1,19 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 from app.routers import raw_materials_router, food_items_router, orders_router
-from app.database import engine
-from app.models import raw_material, food_item, order
+from app.routers.auth import router as auth_router
+from app.database import engine, get_db
+from app.models import raw_material, food_item, order, user
+from app.services.user_service import UserService
 from app.core.config import settings
 
 # Create database tables
 raw_material.Base.metadata.create_all(bind=engine)
 food_item.Base.metadata.create_all(bind=engine)
 order.Base.metadata.create_all(bind=engine)
+user.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Food Order & Inventory Management System",
@@ -40,9 +44,23 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth_router)
 app.include_router(raw_materials_router)
 app.include_router(food_items_router)
 app.include_router(orders_router)
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Create default admin user on startup"""
+    db = next(get_db())
+    try:
+        UserService.create_default_admin(db)
+        print("✅ Default admin user created/verified")
+    except Exception as e:
+        print(f"⚠️ Could not create default admin user: {e}")
+    finally:
+        db.close()
 
 
 @app.get("/")
