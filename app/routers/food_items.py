@@ -79,6 +79,29 @@ def get_food_item(
     return convert_to_response(food_item)
 
 
+@router.put("/{food_item_id}")
+def update_food_item(
+    food_item_id: int,
+    food_item: FoodItemCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)  # Require authentication
+):
+    """Update food item and its ingredients"""
+    try:
+        updated_item = FoodItemService.update_food_item(db, food_item_id, food_item)
+        if not updated_item:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Food item not found"
+            )
+        return convert_to_response(updated_item)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
 @router.patch("/{food_item_id}/availability")
 def update_food_item_availability(
     food_item_id: int,

@@ -293,7 +293,3 @@ This project is licensed under the MIT License.
 - **Frontend Repository**: [food-inventory-frontend](link-to-frontend-repo)
 - **API Documentation**: Available at `/docs` endpoint
 - **Deployment Guide**: See deployment section above
-
----
-
-**Built with ❤️ for efficient food service management**

@@ -62,6 +62,41 @@ class FoodItemService:
         ).filter(FoodItem.is_available == True).all()
 
     @staticmethod
+    def update_food_item(db: Session, food_item_id: int, food_item_data: FoodItemCreate) -> Optional[FoodItem]:
+        """Update food item and its ingredients"""
+        # Get existing food item
+        db_food_item = db.query(FoodItem).filter(FoodItem.id == food_item_id).first()
+        if not db_food_item:
+            return None
+
+        # Update basic info
+        db_food_item.name = food_item_data.name
+        db_food_item.price = food_item_data.price
+        db_food_item.is_available = food_item_data.is_available
+
+        # Delete existing ingredients
+        db.query(FoodItemIngredient).filter(FoodItemIngredient.food_item_id == food_item_id).delete()
+
+        # Add new ingredients
+        for ingredient_data in food_item_data.ingredients:
+            # Validate raw material exists
+            raw_material = db.query(RawMaterial).filter(RawMaterial.id == ingredient_data.raw_material_id).first()
+            if not raw_material:
+                raise ValueError(f"Raw material with ID {ingredient_data.raw_material_id} not found")
+
+            ingredient = FoodItemIngredient(
+                food_item_id=db_food_item.id,
+                raw_material_id=ingredient_data.raw_material_id,
+                quantity_required_per_unit=ingredient_data.quantity_required_per_unit
+            )
+            db.add(ingredient)
+
+        db.commit()
+        
+        # Reload with relationships
+        return FoodItemService.get_food_item(db, db_food_item.id)
+
+    @staticmethod
     def update_food_item_availability(db: Session, food_item_id: int, is_available: bool) -> Optional[FoodItem]:
         """Update food item availability"""
         db_food_item = db.query(FoodItem).filter(FoodItem.id == food_item_id).first()
