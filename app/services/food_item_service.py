@@ -75,14 +75,25 @@ class FoodItemService:
 
     @staticmethod
     def delete_food_item(db: Session, food_item_id: int) -> bool:
-        """Delete food item"""
-        db_food_item = db.query(FoodItem).filter(FoodItem.id == food_item_id).first()
-        if not db_food_item:
+        """Delete food item and its ingredients"""
+        try:
+            db_food_item = db.query(FoodItem).filter(FoodItem.id == food_item_id).first()
+            if not db_food_item:
+                return False
+            
+            # First delete all ingredients (foreign key references)
+            db.query(FoodItemIngredient).filter(
+                FoodItemIngredient.food_item_id == food_item_id
+            ).delete()
+            
+            # Then delete the food item
+            db.delete(db_food_item)
+            db.commit()
+            return True
+        except Exception as e:
+            db.rollback()
+            print(f"Error deleting food item: {e}")
             return False
-        
-        db.delete(db_food_item)
-        db.commit()
-        return True
 
     @staticmethod
     def check_food_item_availability(db: Session, food_item_id: int, quantity: int) -> dict:
