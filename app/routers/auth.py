@@ -21,12 +21,31 @@ def register(
 ):
     """Register a new user (Admin only)"""
     try:
+        # Additional validation for password length
+        if len(user.password) > 72:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password is too long. Maximum 72 characters allowed."
+            )
+        
+        # Convert role string to enum if needed
+        if isinstance(user.role, str):
+            if user.role.upper() == "ADMIN":
+                user.role = UserRole.ADMIN
+            else:
+                user.role = UserRole.ORDER_MAINTAINER
+        
         db_user = UserService.create_user(db, user)
         return db_user
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create user: {str(e)}"
         )
 
 
