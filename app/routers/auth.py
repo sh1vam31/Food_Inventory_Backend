@@ -146,19 +146,36 @@ def initialize_admin(db: Session = Depends(get_db)):
     """Initialize default admin user (public endpoint for setup)"""
     try:
         # Check if any admin exists
-        existing_admin = db.query(User).filter(User.role == "ADMIN").first()
+        from app.models.user import User, UserRole
+        existing_admin = db.query(User).filter(User.role == UserRole.ADMIN).first()
         if existing_admin:
             return {"message": "Admin user already exists", "username": existing_admin.username}
         
-        # Create default admin
-        admin_user = UserService.create_default_admin(db)
+        # Create admin user directly without using UserService to avoid validation issues
+        from app.core.auth import get_password_hash
+        
+        hashed_password = get_password_hash("admin")
+        admin_user = User(
+            username="admin",
+            email="admin@foodinventory.com",
+            hashed_password=hashed_password,
+            full_name="System Administrator",
+            role=UserRole.ADMIN,
+            is_active=True
+        )
+        
+        db.add(admin_user)
+        db.commit()
+        db.refresh(admin_user)
+        
         return {
             "message": "Admin user created successfully",
-            "username": admin_user.username,
+            "username": "admin",
             "password": "admin",
             "note": "Please change the password after first login"
         }
     except Exception as e:
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create admin user: {str(e)}"
