@@ -155,7 +155,7 @@ def initialize_admin(db: Session = Depends(get_db)):
         return {
             "message": "Admin user created successfully",
             "username": admin_user.username,
-            "password": "admin123",
+            "password": "admin",
             "note": "Please change the password after first login"
         }
     except Exception as e:

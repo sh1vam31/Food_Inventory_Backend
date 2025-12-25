@@ -101,10 +101,11 @@ class UserService:
         if admin:
             return admin
         
+        # Use a simple password that works with bcrypt
         admin_user = UserCreate(
             username="admin",
             email="admin@foodinventory.com",
-            password="admin123",  # Change this in production
+            password="admin",  # Simple password for initial setup
             full_name="System Administrator",
             role=UserRole.ADMIN
         )
