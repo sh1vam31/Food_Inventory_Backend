@@ -33,14 +33,41 @@ def register(
 @router.post("/login", response_model=Token)
 def login(user_credentials: UserLogin, response: Response, db: Session = Depends(get_db)):
     """Login user and return JWT tokens"""
-    user = UserService.authenticate_user(db, user_credentials.username, user_credentials.password)
+    from app.models.user import User
+    import hashlib
+    from app.core.auth import verify_password
     
-    if not user:
+    user = db.query(User).filter(User.username == user_credentials.username).first()
+    
+    if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    # Try both hash methods (bcrypt and simple hash for compatibility)
+    password_valid = False
+    
+    try:
+        # First try bcrypt (for properly created users)
+        password_valid = verify_password(user_credentials.password, user.hashed_password)
+    except:
+        # If bcrypt fails, try simple hash (for admin user created via create-first-admin)
+        simple_hash = hashlib.sha256(user_credentials.password.encode()).hexdigest()
+        password_valid = (user.hashed_password == simple_hash)
+    
+    if not password_valid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Update last login
+    from datetime import datetime
+    user.last_login = datetime.utcnow()
+    db.commit()
     
     # Create tokens
     access_token_expires = timedelta(minutes=30)  # 30 minutes
