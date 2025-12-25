@@ -33,11 +33,7 @@ class UserService:
         if UserService.get_user_by_email(db, user.email):
             raise ValueError(f"Email '{user.email}' already exists")
         
-        # Validate password length for bcrypt compatibility
-        if len(user.password.encode('utf-8')) > 72:
-            raise ValueError("Password is too long. Maximum 72 characters allowed.")
-        
-        # Create user
+        # Create user (no password length restriction with scrypt)
         hashed_password = get_password_hash(user.password)
         db_user = User(
             username=user.username,

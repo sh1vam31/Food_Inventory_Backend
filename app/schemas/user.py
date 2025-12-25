@@ -13,14 +13,6 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    
-    @validator('password')
-    def validate_password(cls, v):
-        if len(v.encode('utf-8')) > 72:
-            raise ValueError('Password is too long. Maximum 72 characters allowed.')
-        if len(v) < 4:
-            raise ValueError('Password must be at least 4 characters long.')
-        return v
 
 
 class UserUpdate(BaseModel):

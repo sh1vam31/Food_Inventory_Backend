@@ -1,39 +1,59 @@
 from datetime import datetime, timedelta
 from typing import Optional, Union
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from fastapi import HTTPException, status
 from app.core.config import settings
-
-# Password hashing with proper bcrypt configuration
-pwd_context = CryptContext(
-    schemes=["bcrypt"], 
-    deprecated="auto",
-    bcrypt__rounds=12,  # Specify rounds explicitly
-    bcrypt__ident="2b"  # Use 2b variant for better compatibility
-)
+import hashlib
+import secrets
+import base64
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash"""
+    """Verify a password against its hash using multiple methods"""
     try:
-        # Truncate password if too long for bcrypt (72 bytes max)
-        if len(plain_password.encode('utf-8')) > 72:
-            plain_password = plain_password[:72]
-        return pwd_context.verify(plain_password, hashed_password)
-    except Exception:
-        # Fallback for simple hash (for admin user created via create-first-admin)
-        import hashlib
+        # Method 1: Try scrypt hash (new method)
+        if ':' in hashed_password and len(hashed_password.split(':')) == 2:
+            salt, stored_hash = hashed_password.split(':')
+            salt_bytes = base64.b64decode(salt)
+            computed_hash = hashlib.scrypt(
+                plain_password.encode('utf-8'), 
+                salt=salt_bytes, 
+                n=16384, r=8, p=1, 
+                dklen=32
+            )
+            return base64.b64encode(computed_hash).decode('utf-8') == stored_hash
+        
+        # Method 2: Try simple SHA256 hash (for admin user)
         simple_hash = hashlib.sha256(plain_password.encode()).hexdigest()
-        return hashed_password == simple_hash
+        if hashed_password == simple_hash:
+            return True
+            
+        # Method 3: Try bcrypt (for backward compatibility)
+        from passlib.context import CryptContext
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        return pwd_context.verify(plain_password, hashed_password)
+        
+    except Exception:
+        return False
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a password"""
-    # Truncate password if too long for bcrypt (72 bytes max)
-    if len(password.encode('utf-8')) > 72:
-        password = password[:72]
-    return pwd_context.hash(password)
+    """Hash a password using scrypt (no length limitations)"""
+    # Generate a random salt
+    salt = secrets.token_bytes(32)
+    
+    # Hash the password using scrypt
+    hashed = hashlib.scrypt(
+        password.encode('utf-8'), 
+        salt=salt, 
+        n=16384, r=8, p=1, 
+        dklen=32
+    )
+    
+    # Return salt:hash format
+    salt_b64 = base64.b64encode(salt).decode('utf-8')
+    hash_b64 = base64.b64encode(hashed).decode('utf-8')
+    return f"{salt_b64}:{hash_b64}"
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
