@@ -106,17 +106,26 @@ def update_food_item(
 def update_food_item_availability(
     food_item_id: int,
     is_available: bool,
+    delete_ingredients: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)  # Require authentication
 ):
-    """Update food item availability"""
-    food_item = FoodItemService.update_food_item_availability(db, food_item_id, is_available)
-    if not food_item:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Food item not found"
+    """Update food item availability with optional ingredient deletion"""
+    try:
+        result = FoodItemService.update_food_item_availability_with_inventory(
+            db, food_item_id, is_available, delete_ingredients
         )
-    return {"message": "Food item availability updated", "is_available": food_item.is_available}
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Food item not found"
+            )
+        return result
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
 @router.get("/{food_item_id}/availability-check")

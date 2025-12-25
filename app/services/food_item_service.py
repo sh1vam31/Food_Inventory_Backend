@@ -109,6 +109,63 @@ class FoodItemService:
         return db_food_item
 
     @staticmethod
+    def update_food_item_availability_with_inventory(
+        db: Session, 
+        food_item_id: int, 
+        is_available: bool, 
+        delete_ingredients: bool = False
+    ) -> Optional[dict]:
+        """Update food item availability with optional ingredient deletion from inventory"""
+        # Get the food item with ingredients
+        food_item = FoodItemService.get_food_item(db, food_item_id)
+        if not food_item:
+            return None
+        
+        # Track deleted ingredients for response
+        deleted_ingredients = []
+        
+        # If marking as unavailable and delete_ingredients is True, remove ingredients from inventory
+        if not is_available and delete_ingredients:
+            for ingredient in food_item.ingredients:
+                raw_material = ingredient.raw_material
+                if raw_material.quantity_available >= ingredient.quantity_required_per_unit:
+                    # Reduce inventory by the required amount per unit
+                    old_quantity = raw_material.quantity_available
+                    raw_material.quantity_available -= ingredient.quantity_required_per_unit
+                    
+                    deleted_ingredients.append({
+                        "raw_material_name": raw_material.name,
+                        "quantity_removed": ingredient.quantity_required_per_unit,
+                        "old_quantity": old_quantity,
+                        "new_quantity": raw_material.quantity_available,
+                        "unit": raw_material.unit
+                    })
+                else:
+                    # Not enough inventory to remove
+                    deleted_ingredients.append({
+                        "raw_material_name": raw_material.name,
+                        "quantity_removed": 0,
+                        "old_quantity": raw_material.quantity_available,
+                        "new_quantity": raw_material.quantity_available,
+                        "unit": raw_material.unit,
+                        "error": f"Insufficient inventory (available: {raw_material.quantity_available}, required: {ingredient.quantity_required_per_unit})"
+                    })
+        
+        # Update food item availability
+        food_item.is_available = is_available
+        db.commit()
+        db.refresh(food_item)
+        
+        response = {
+            "message": "Food item availability updated",
+            "is_available": food_item.is_available,
+            "ingredients_deleted": delete_ingredients and not is_available,
+            "deleted_ingredients": deleted_ingredients if deleted_ingredients else None
+        }
+        
+        return response
+
+    @staticmethod
     def delete_food_item(db: Session, food_item_id: int) -> bool:
         """Delete food item and its ingredients"""
         try:
