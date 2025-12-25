@@ -139,3 +139,27 @@ def get_users(
 ):
     """Get all users (Admin only)"""
     return UserService.get_users(db, skip=skip, limit=limit)
+
+
+@router.post("/init-admin")
+def initialize_admin(db: Session = Depends(get_db)):
+    """Initialize default admin user (public endpoint for setup)"""
+    try:
+        # Check if any admin exists
+        existing_admin = db.query(User).filter(User.role == "ADMIN").first()
+        if existing_admin:
+            return {"message": "Admin user already exists", "username": existing_admin.username}
+        
+        # Create default admin
+        admin_user = UserService.create_default_admin(db)
+        return {
+            "message": "Admin user created successfully",
+            "username": admin_user.username,
+            "password": "admin123",
+            "note": "Please change the password after first login"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create admin user: {str(e)}"
+        )

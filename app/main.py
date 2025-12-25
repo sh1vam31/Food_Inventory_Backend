@@ -25,14 +25,13 @@ app = FastAPI(
 allowed_origins = [
     "http://localhost:3000",
     "http://localhost:3001",
-    "https://food-inventory-frontend.vercel.app",  # Your actual Vercel domain
 ]
 
 # In production, you might want to be more restrictive
 if settings.is_production:
     # Add your production frontend URL here
     allowed_origins = [
-        "https://food-inventory-frontend.vercel.app",  # Your actual Vercel domain
+        "https://your-actual-vercel-app.vercel.app",  # Replace with your real Vercel URL
     ]
 
 app.add_middleware(
