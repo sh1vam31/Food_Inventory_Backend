@@ -52,15 +52,11 @@ app.include_router(orders_router)
 
 @app.on_event("startup")
 async def startup_event():
-    """Create default admin user on startup"""
-    db = next(get_db())
-    try:
-        UserService.create_default_admin(db)
-        print("✅ Default admin user created/verified")
-    except Exception as e:
-        print(f"⚠️ Could not create default admin user: {e}")
-    finally:
-        db.close()
+    """Startup event - admin creation disabled to avoid bcrypt issues"""
+    print("✅ Server started successfully")
+    print("💡 Use /api/auth/create-first-admin to create admin user")
+    # Disabled automatic admin creation due to bcrypt compatibility issues
+    # Use the /api/auth/create-first-admin endpoint instead
 
 
 @app.get("/")
