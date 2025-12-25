@@ -7,7 +7,7 @@ from app.schemas.user import UserLogin, Token, RefreshToken, UserCreate, UserRes
 from app.services.user_service import UserService
 from app.core.auth import create_access_token, create_refresh_token, verify_token
 from app.core.dependencies import get_current_user, require_admin
-from app.models.user import User
+from app.models.user import User, UserRole
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 security = HTTPBearer()
