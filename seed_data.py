@@ -16,11 +16,10 @@ def seed_database():
     db = SessionLocal()
     
     try:
-        # Clear existing data (for development)
-        db.query(FoodItemIngredient).delete()
-        db.query(FoodItem).delete()
-        db.query(RawMaterial).delete()
-        db.commit()
+        # Check if data already exists
+        if db.query(RawMaterial).first():
+            print("✅ Database already has data. Skipping seed.")
+            return
         
         # Seed raw materials
         raw_materials = [
