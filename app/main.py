@@ -22,18 +22,23 @@ app = FastAPI(
 )
 
 # CORS middleware - Configure for production
-allowed_origins = [
+# Allow multiple origins
+base_origins = [
     "http://localhost:3000",
     "http://localhost:3001",
-    "https://food-inventory-frontend.vercel.app",  # Your actual Vercel domain
+    "http://localhost:3002",
+    "http://localhost:3003",
+    "http://localhost:3004",
+    "http://localhost:3005",
 ]
 
-# In production, you might want to be more restrictive
-if settings.is_production:
-    # Add your production frontend URL here
-    allowed_origins = [
-        "https://food-inventory-frontend.vercel.app",  # Your actual Vercel domain
-    ]
+# Add production URL
+if settings.allowed_origins:
+    # If it's a comma-separated string, split it, otherwise wrap in list
+    extra_origins = [o.strip() for o in settings.allowed_origins.split(",")]
+    allowed_origins = list(set(base_origins + extra_origins))
+else:
+    allowed_origins = base_origins + ["https://food-inventory-frontend.vercel.app"]
 
 app.add_middleware(
     CORSMiddleware,
