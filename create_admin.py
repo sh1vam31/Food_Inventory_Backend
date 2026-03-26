@@ -16,6 +16,9 @@ from app.schemas.user import UserCreate
 
 def create_admin_user():
     """Create the default admin user"""
+    from app.database import Base
+    # Ensure tables are created
+    Base.metadata.create_all(bind=engine)
     
     # Get database session
     db = next(get_db())
